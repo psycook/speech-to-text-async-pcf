@@ -1,0 +1,7 @@
+#008000
+#FF0000
+9c2c8fc921be4b4a9d5d460e02a19816
+uksouth
+en-GB
+fr-FR
+idle
