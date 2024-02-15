@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="smc" constructor="SpeechToTextAsync" version="0.0.3" display-name-key="SpeechToTextAsync" description-key="SpeechToTextAsync description" control-type="standard" >
+  <control namespace="smc" constructor="SpeechToTextAsync" version="1.0.7" display-name-key="SpeechToTextAsync" description-key="SpeechToTextAsync description" control-type="standard" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -26,6 +26,8 @@
     <property name="state" display-name-key="Listening state" description-key="The listening state (waiting or listening)" of-type="SingleLine.Text" usage="bound" required="false" />
     <property name="spokenText" display-name-key="Spoken Text" description-key="The spoken text" of-type="SingleLine.Text" usage="bound" required="false" />
     <property name="translatedText" display-name-key="Translated Text" description-key="The translated text" of-type="SingleLine.Text" usage="bound" required="false" />
+    <property name="spokenRecognisingText" display-name-key="Source Recognising Text" description-key="The source recognising text" of-type="SingleLine.Text" usage="bound" required="false" />
+    <property name="translatedRecognisingText" display-name-key="Translated Recognising Text" description-key="The translated recognising text" of-type="SingleLine.Text" usage="bound" required="false" />
     <property name="errorText" display-name-key="Error Text" description-key="The error text" of-type="SingleLine.Text" usage="bound" required="false" />
 
     <resources>

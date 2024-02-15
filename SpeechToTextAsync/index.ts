@@ -21,9 +21,11 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
     private _buttonStopColor: string | undefined = '#00ff00';
 
     // output attributes
-    private _state: string = "idle"; // idle|listening|complete
+    private _state: string = "idle"; // idle|listening|recognising|recognised|complete
     private _sourceText: string = "";
     private _translatedText: string = "";
+    private _spokenRecognisingText: string = "";
+    private _translatedRecognisingText: string = "";
     private _errorText: string = "";
 
     // speech sdk
@@ -33,7 +35,6 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
      * Empty constructor.
      */
     constructor() {
-
     }
 
     /**
@@ -65,7 +66,7 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
      * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
      */
     public updateView(context: ComponentFramework.Context<IInputs>): void {
-        console.log(`updateView: called`);
+        //console.log(`updateView: called`);
         this.updateStateFromContext(context);
     }
 
@@ -74,12 +75,14 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
      * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as “bound” or “output”
      */
     public getOutputs(): IOutputs {
-        console.log(`Returning outputs: translatedText: ${this._translatedText}, sourceText: ${this._sourceText}`);
+        console.log(`Returning outputs: translatedText: ${this._translatedText}, sourceText: ${this._sourceText} sourceRecognisingText: ${this._spokenRecognisingText}, translatedRecognisingText: ${this._translatedRecognisingText}`);
 
         return {
             "state": this._state,
             "spokenText": this._sourceText,
             "translatedText": this._translatedText,
+            "spokenRecognisingText": this._spokenRecognisingText,
+            "translatedRecognisingText": this._translatedRecognisingText,
             "errorText": this._errorText
         };
     }
@@ -102,7 +105,7 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
      *  Custom functions
      */
     public updateStateFromContext(context: ComponentFramework.Context<IInputs>): void {
-        console.log(`updateStateFromContext: called`);
+        //console.log(`updateStateFromContext: called`);
 
         // Add code to update control view
         this._subscriptionKey = context.parameters.subscriptionKey.raw as string;
@@ -123,7 +126,7 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
         }
 
         if (!this._isInitiated) {
-            console.log(`updateStateFromContext: initiating control`);
+            console.log(`updateStateFromContext: initiating control, mic color is ${this._buttonMicColor}, stop color is ${this._buttonStopColor}`);
             // create the translation div & button
             this._buttonDiv = document.createElement("div");
             this._buttonDiv.id = `button-div`;
@@ -137,14 +140,15 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
 
             // set the initialised state to true
             this._isInitiated = true;
-        } else {
+        } 
+        /*else {
             if (this._isInListenMode) {
                 this.startListeningUpdateUIComponents();
             }
             else {
                 this.stopListeningUpdateUIComponents();
             }
-        }
+        }*/
     }
 
     public onClick(): void {
@@ -155,11 +159,14 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
         }
     }
 
-
     public startListening(): void {
+        console.log(`Recognising: start listening: ${this._sourceLanguage} -> ${this._targetLanguage}`);
+
         // reset the text values
         this._sourceText = "";
         this._translatedText = "";
+        this._spokenRecognisingText = "";
+        this._translatedRecognisingText = "";
 
         // create the speech recogniser
         var speechConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(this._subscriptionKey, this._region);
@@ -181,18 +188,32 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
 
         // update the UI components
         this.startListeningUpdateUIComponents();
+        this._notifyOutputChanged();
+
     }
 
     public recognising(sender: SpeechSDK.TranslationRecognizer, event: SpeechSDK.TranslationRecognitionEventArgs): void {
-        console.log(`Recognising: ${event.result.text}`);
-        console.log(`Recognising: ${event.result.translations.get(this._targetLanguage.split("-")[0])}`);
+        var text = event.result.text;
+        var translatedText = event.result.translations.get(this._targetLanguage.split("-")[0]);
+
+        this._state = "recognising";
+        this._spokenRecognisingText = (text != undefined ? text : "");
+        this._translatedRecognisingText = (translatedText != undefined ? translatedText : "");
+        console.log(`Recognising: ${this._spokenRecognisingText}`);
+        console.log(`Recognising: ${this._translatedRecognisingText}}`);
+        this._notifyOutputChanged();
     }
 
     public recognised(sender: SpeechSDK.TranslationRecognizer, event: SpeechSDK.TranslationRecognitionEventArgs): void {
-        console.log(`Recognised: ${event.result.text}`);
-        console.log(`Recognised: ${event.result.translations.get(this._targetLanguage.split("-")[0])}`);
-        this._sourceText += event.result.text + " ";
-        this._translatedText += event.result.translations.get(this._targetLanguage.split("-")[0]) + " ";
+        var text = event.result.text;
+        var translatedText = event.result.translations.get(this._targetLanguage.split("-")[0]);
+        
+        this._state = "recognised";
+        this._sourceText += (text != undefined ? text : "") + " ";
+        this._translatedText += (translatedText != undefined ? translatedText :  "" )+ " ";
+        console.log(`Recognised: ${this._sourceText}`);
+        console.log(`Recognised: ${this._translatedText}`);
+        this._notifyOutputChanged();
     }
 
     public sessionStopped(sender: SpeechSDK.Recognizer, event: SpeechSDK.SessionEventArgs): void {
@@ -201,6 +222,8 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
 
     public stopListening(): void {
         if (this._recognizer != undefined) {
+            this._spokenRecognisingText = "";
+            this._translatedRecognisingText = "";
             this._recognizer.stopContinuousRecognitionAsync();
             this.stopListeningUpdateUIComponents();
             this._notifyOutputChanged();
@@ -210,8 +233,6 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
     public startListeningUpdateUIComponents() {
         this._buttonDiv.innerHTML = `<svg width="${this._context.mode.allocatedWidth}" height="${this._context.mode.allocatedHeight}" viewBox="0,0,1024,1024" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#prefix__clip0_236_16)"><circle cx="512" cy="512" r="448" fill="${this._buttonStopColor}"/><circle cx="512" cy="512" r="480" stroke="${this._buttonStopColor}" stroke-opacity=".5" stroke-width="64"/><rect x="256" y="256" width="512" height="512" rx="64" fill="#fff"/></g><defs><clipPath id="prefix__clip0_236_16"><path fill="#fff" d="M0 0h1024v1024H0z"/></clipPath></defs></svg>`
         this._state = "listening";
-        this._sourceText = "";
-        this._translatedText = "";
         this._isInListenMode = true;
     }
 
