@@ -17,8 +17,7 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
     private _region: string;
     private _sourceLanguage: string;
     private _targetLanguage: string;
-    private _buttonMicColor: string | undefined = "#ff0000";
-    private _buttonStopColor: string | undefined = '#00ff00';
+    private _strokeColor: string = "black";
 
     // output attributes
     private _state: string = "idle"; // idle|listening|recognising|recognised|complete
@@ -28,23 +27,16 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
     private _translatedRecognisingText: string = "";
     private _errorText: string = "";
 
+    // size
+    private _previousWidth: number = 0;
+    private _previewHeight: number = 0;
+
     // speech sdk
     private _recognizer: SpeechSDK.TranslationRecognizer | undefined;
 
-    /**
-     * Empty constructor.
-     */
     constructor() {
     }
 
-    /**
-     * Used to initialize the control instance. Controls can kick off remote server calls and other initialization actions here.
-     * Data-set values are not initialized here, use updateView.
-     * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to property names defined in the manifest, as well as utility functions.
-     * @param notifyOutputChanged A callback method to alert the framework that the control has new outputs ready to be retrieved asynchronously.
-     * @param state A piece of data that persists in one session for a single user. Can be set at any point in a controls life cycle by calling 'setControlState' in the Mode interface.
-     * @param container If a control is marked control-type='standard', it will receive an empty div element within which it can render its content.
-     */
     public init(context: ComponentFramework.Context<IInputs>, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
         // save the context
         this._context = context;
@@ -60,20 +52,11 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
         this._state = "idle";
     }
 
-
-    /**
-     * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
-     * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
-     */
     public updateView(context: ComponentFramework.Context<IInputs>): void {
         //console.log(`updateView: called`);
         this.updateStateFromContext(context);
     }
 
-    /**
-     * It is called by the framework prior to a control receiving new data.
-     * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as “bound” or “output”
-     */
     public getOutputs(): IOutputs {
         console.log(`Returning outputs: translatedText: ${this._translatedText}, sourceText: ${this._sourceText} sourceRecognisingText: ${this._spokenRecognisingText}, translatedRecognisingText: ${this._translatedRecognisingText}`);
 
@@ -87,46 +70,24 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
         };
     }
 
-    /**
-     * Called when the control is to be removed from the DOM tree. Controls should use this call for cleanup.
-     * i.e. cancelling any pending remote calls, removing listeners, etc.
-     */
     public destroy(): void {
         // Add code to cleanup control if necessary
     }
 
-
-    /********************************************************************************************************
-     * 
-     * Custom functions
-     * 
-     ********************************************************************************************************/
-    /**
-     *  Custom functions
-     */
     public updateStateFromContext(context: ComponentFramework.Context<IInputs>): void {
-        //console.log(`updateStateFromContext: called`);
-
-        // Add code to update control view
         this._subscriptionKey = context.parameters.subscriptionKey.raw as string;
         this._region = context.parameters.region.raw as string;
         this._sourceLanguage = context.parameters.sourceLanguage.raw as string;
         this._targetLanguage = context.parameters.targetLanguage.raw as string;
         this._state = context.parameters.state.raw as string;
+        const strokeColor = context.parameters.strokeColor.raw as string;
 
-        const buttonMicColor = context.parameters.micButtonColor.raw as string;
-        const buttonStopColor = context.parameters.stopButtonColor.raw as string;
-
-        if (buttonMicColor != undefined || buttonMicColor != "" || buttonMicColor != null) {
-            this._buttonMicColor = buttonMicColor;
-        }
-
-        if (buttonStopColor != undefined || buttonStopColor != null || buttonStopColor != "") {
-            this._buttonStopColor = buttonStopColor;
+        if (strokeColor != undefined || strokeColor != "" || strokeColor != null) {
+            this._strokeColor = strokeColor;
         }
 
         if (!this._isInitiated) {
-            console.log(`updateStateFromContext: initiating control, mic color is ${this._buttonMicColor}, stop color is ${this._buttonStopColor}`);
+            console.log(`updateStateFromContext: initiating control, stroke color is ${this._strokeColor}`);
             // create the translation div & button
             this._buttonDiv = document.createElement("div");
             this._buttonDiv.id = `button-div`;
@@ -134,21 +95,24 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
             this._buttonDiv.style.width = `100%`;
             this._buttonDiv.style.height = `100%`;
             this._buttonDiv.style.cursor = `pointer`;
-            this._buttonDiv.innerHTML = `<svg width="${this._context.mode.allocatedWidth}" height="${this._context.mode.allocatedHeight}" fill="none" viewBox="0,0,1024,1024" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#prefix__clip0_239_2)"><circle cx="512" cy="512" r="448" fill="${this._buttonMicColor}"/><circle cx="512" cy="512" r="480" stroke="${this._buttonMicColor}" stroke-opacity=".5" stroke-width="64"/><rect x="388.678" y="256" width="243.45" height="364.551" rx="121.725" fill="#fff"/><path d="M694.551 499.658c0 100.668-81.607 182.276-182.275 182.276S330 600.326 330 499.658" stroke="#fff" stroke-width="64" stroke-linecap="round"/><path d="M544.276 707.32v-32h-64v32h64zm-64 60.68c0 17.673 14.327 32 32 32 17.673 0 32-14.327 32-32h-64zm0-60.68V768h64v-60.68h-64z" fill="#fff"/></g><defs><clipPath id="prefix__clip0_239_2"><path fill="#fff" d="M0 0h1024v1024H0z"/></clipPath></defs></svg>`;
+            this.setMicButton();
             this._buttonDiv.addEventListener('click', this.onClick.bind(this));
             this._container.appendChild(this._buttonDiv);
-
             // set the initialised state to true
             this._isInitiated = true;
-        } 
-        /*else {
-            if (this._isInListenMode) {
-                this.startListeningUpdateUIComponents();
+        } else {
+
+            if(this._previousWidth != this._context.mode.allocatedWidth || this._previewHeight != this._context.mode.allocatedHeight) {
+                console.log(`updateStateFromContext: resizing control, stroke color is ${this._strokeColor}`);
+                this._previousWidth = this._context.mode.allocatedWidth;
+                this._previewHeight = this._context.mode.allocatedHeight;
+                if(this._isInListenMode) {
+                    this.setListeningButton();
+                } else {
+                    this.setMicButton();
+                }
             }
-            else {
-                this.stopListeningUpdateUIComponents();
-            }
-        }*/
+        }
     }
 
     public onClick(): void {
@@ -231,15 +195,26 @@ export class SpeechToTextAsync implements ComponentFramework.StandardControl<IIn
     }
 
     public startListeningUpdateUIComponents() {
-        this._buttonDiv.innerHTML = `<svg width="${this._context.mode.allocatedWidth}" height="${this._context.mode.allocatedHeight}" viewBox="0,0,1024,1024" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#prefix__clip0_236_16)"><circle cx="512" cy="512" r="448" fill="${this._buttonStopColor}"/><circle cx="512" cy="512" r="480" stroke="${this._buttonStopColor}" stroke-opacity=".5" stroke-width="64"/><rect x="256" y="256" width="512" height="512" rx="64" fill="#fff"/></g><defs><clipPath id="prefix__clip0_236_16"><path fill="#fff" d="M0 0h1024v1024H0z"/></clipPath></defs></svg>`
-        this._state = "listening";
+        this.setListeningButton();
+        this._state = 'listening';
         this._isInListenMode = true;
     }
 
     public stopListeningUpdateUIComponents() {
-        this._buttonDiv.innerHTML = `<svg width="${this._context.mode.allocatedWidth}" height="${this._context.mode.allocatedHeight}" fill="none" viewBox="0,0,1024,1024" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#prefix__clip0_239_2)"><circle cx="512" cy="512" r="448" fill="${this._buttonMicColor}"/><circle cx="512" cy="512" r="480" stroke="${this._buttonMicColor}" stroke-opacity=".5" stroke-width="64"/><rect x="388.678" y="256" width="243.45" height="364.551" rx="121.725" fill="#fff"/><path d="M694.551 499.658c0 100.668-81.607 182.276-182.275 182.276S330 600.326 330 499.658" stroke="#fff" stroke-width="64" stroke-linecap="round"/><path d="M544.276 707.32v-32h-64v32h64zm-64 60.68c0 17.673 14.327 32 32 32 17.673 0 32-14.327 32-32h-64zm0-60.68V768h64v-60.68h-64z" fill="#fff"/></g><defs><clipPath id="prefix__clip0_239_2"><path fill="#fff" d="M0 0h1024v1024H0z"/></clipPath></defs></svg>`;
+        this.setMicButton();
         this._state = "complete";
         this._isInListenMode = false;
+    }
+
+
+    public setListeningButton() 
+    {
+        this._buttonDiv.innerHTML = `<svg width='${this._context.mode.allocatedWidth}' height='${this._context.mode.allocatedHeight}' viewBox='0 0 800 800' fill='none' xmlns='http://www.w3.org/2000/svg'> <rect x="338" y="300" width="30" height="200" fill="${this._strokeColor}"/> <rect x="433" y="300" width="30" height="200" fill="${this._strokeColor}"/> <g> <path d='M400 700C234.315 700 100 565.685 100 400' stroke='${this._strokeColor}' stroke-width='12' /> <animateTransform attributeType='xml' attributeName='transform' type='rotate' from='0 400 400' to='360 400 400' dur='2s' additive='sum' repeatCount='indefinite' /> </g> </svg>`; 
+    }
+
+    public setMicButton()
+    {
+        this._buttonDiv.innerHTML = `<svg width='${this._context.mode.allocatedWidth}' height='${this._context.mode.allocatedHeight}' viewBox='0 0 800 800' fill='none' xmlns='http://www.w3.org/2000/svg'> <circle cx='400' cy='400' r='294' stroke='${this._strokeColor}' stroke-width='12'/> <path d='M334.148 380.377V265.182C334.148 229.185 363.329 200 399.331 200H400.646C436.644 200 465.828 229.181 465.828 265.182V380.377C465.828 416.375 436.647 445.559 400.646 445.559H399.331C363.333 445.559 334.148 416.378 334.148 380.377ZM480.784 460.515C502.189 439.11 513.977 410.648 513.977 380.377C513.977 373.699 508.563 368.285 501.884 368.285C495.206 368.285 489.792 373.699 489.792 380.377C489.792 404.188 480.519 426.574 463.681 443.412C446.843 460.25 424.457 469.523 400.646 469.523H399.331C375.52 469.523 353.134 460.25 336.296 443.412C319.458 426.574 310.185 404.188 310.185 380.377C310.185 373.699 304.771 368.285 298.092 368.285C291.414 368.285 286 373.699 286 380.377C286 410.648 297.787 439.11 319.193 460.515C337.88 479.202 361.945 490.557 387.896 493.141V575.815H334.152C327.473 575.815 322.059 581.229 322.059 587.908C322.059 594.586 327.473 600 334.152 600H465.832C472.51 600 477.924 594.586 477.924 587.908C477.924 581.229 472.51 575.815 465.832 575.815H412.088V493.141C438.039 490.557 462.104 479.202 480.791 460.515H480.784Z' fill='${this._strokeColor}'/> </svg> `;
     }
 
 }

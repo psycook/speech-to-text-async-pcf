@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="smc" constructor="SpeechToTextAsync" version="1.0.7" display-name-key="SpeechToTextAsync" description-key="SpeechToTextAsync description" control-type="standard" >
+  <control namespace="smc" constructor="SpeechToTextAsync" version="1.0.10" display-name-key="SpeechToTextAsync" description-key="SpeechToTextAsync description" control-type="standard" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -17,13 +17,12 @@
     </external-service-usage>
 
     <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
-    <property name="micButtonColor" display-name-key="mic button colour" description-key="The mic button colour (hex)" of-type="SingleLine.Text" usage="input" required="false" />
-    <property name="stopButtonColor" display-name-key="stop button colour" description-key="The stop button colour (hex)" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="strokeColor" display-name-key="Stroke Color" description-key="The colour of the icon (hex)" of-type="SingleLine.Text" usage="input" required="false" default-value="#000000"/>
     <property name="subscriptionKey" display-name-key="Subscription Key" description-key="The subscription key" of-type="SingleLine.Text" usage="input" required="true" />
     <property name="region" display-name-key="Region" description-key="The region" of-type="SingleLine.Text" usage="input" required="true" />
-    <property name="sourceLanguage" display-name-key="Source Language" description-key="The source language" of-type="SingleLine.Text" usage="input" required="true" />
-    <property name="targetLanguage" display-name-key="Target Language" description-key="The target language" of-type="SingleLine.Text" usage="input" required="true" />
-    <property name="state" display-name-key="Listening state" description-key="The listening state (waiting or listening)" of-type="SingleLine.Text" usage="bound" required="false" />
+    <property name="sourceLanguage" display-name-key="Source Language" description-key="The source language" of-type="SingleLine.Text" usage="input" required="true" default-value="en-GB"/>
+    <property name="targetLanguage" display-name-key="Target Language" description-key="The target language" of-type="SingleLine.Text" usage="input" required="true" default-value="fr-FR"/>
+    <property name="state" display-name-key="Listening state" description-key="The listening state (waiting or listening)" of-type="SingleLine.Text" usage="bound" required="false" default-value="idle"/>
     <property name="spokenText" display-name-key="Spoken Text" description-key="The spoken text" of-type="SingleLine.Text" usage="bound" required="false" />
     <property name="translatedText" display-name-key="Translated Text" description-key="The translated text" of-type="SingleLine.Text" usage="bound" required="false" />
     <property name="spokenRecognisingText" display-name-key="Source Recognising Text" description-key="The source recognising text" of-type="SingleLine.Text" usage="bound" required="false" />
